@@ -1,0 +1,8 @@
+## Interface: 60200
+## Title: Midnight Loot
+## Author: Volstatsz-AeriePeak
+## Version: 0.1
+## SavedVariablesPerCharacter: MidnightLootSaved
+
+MidnightLoot.xml
+MidnightLoot.lua

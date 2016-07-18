@@ -1,0 +1,174 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemalocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+ 
+	<script file="MidnightLoot.lua"/>
+	
+	<!--Templates-->
+	<Frame name="MidnightLootItemFrameTemplate" virtual="True">
+		<Size><AbsDimension x="298" y="50"/></Size>
+		<Anchors><Anchor point="TOPRIGHT"/></Anchors>
+		<Layers>
+			<Layer level="ART">
+				<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-DetailHeaderLeft">
+					<Size><AbsDimension x="256" y="64"/></Size>
+					<Anchors><Anchor point="TOPLEFT"/></Anchors>
+				</Texture>
+				<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-DetailHeaderRight">
+					<Size><AbsDimension x="61" y="64"/></Size>
+					<Anchors><Anchor point="TOPRIGHT" x="17"/></Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<FontString parentKey="itemName" inherits="GameFontNormalLeft">
+					<Size><AbsDimension x="150" y="20"/></Size>
+					<Anchors><Anchor point="TOPLEFT" x="55" y="-2" /></Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button name="$parentLootIcon" parentKey="lootIcon">
+				<Size><AbsDimension x="41.25" y="41.25"/></Size>
+				<Anchors><Anchor point="TOPLEFT" x="6" y="-4"/></Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<Texture parentKey="texture">
+							<Size><AbsDimension x="41.25" y="41.25"/></Size>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnEnter>
+						MidnightLoot_LootIcon_OnEnter(self, motion);
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide();
+						ResetCursor();
+					</OnLeave>
+					<OnUpdate>
+						if ( GameTooltip:IsOwned(self) ) then
+							MidnightLoot_LootIcon_OnEnter(self);
+						end
+						CursorOnUpdate(self);
+					</OnUpdate>
+				</Scripts>
+			</Button>
+			<Button name="$parentButton1" inherits="UIPanelButtonTemplate" parentKey="button1" hidden="True">
+				<Size><AbsDimension x="80" y="22"/></Size>
+				<Anchors><Anchor point="TOPRIGHT" x="-4" y="-2"/></Anchors>
+			</Button>
+			<Button name="$parentButton2" inherits="UIPanelButtonTemplate" parentKey="button2" hidden="True">
+				<Size><AbsDimension x="80" y="22"/></Size>
+				<Anchors><Anchor point="TOPRIGHT" x="-4" y="-25"/></Anchors>
+			</Button>
+		</Frames>
+	</Frame>
+	
+	<!--Tooltip Scanner (Not a visible UI element; this is the object that will be used to test if a soulbind item is tradable.)-->
+	<GameTooltip name="MidnightLootScanTooltip" inherits="GameTooltipTemplate">
+		<Scripts>
+			<OnLoad>
+				self:SetOwner(WorldFrame, "ANCHOR_NONE");
+			</OnLoad>
+		</Scripts>
+	</GameTooltip>
+	
+	
+	<!--Loot Frame-->
+	<Frame name="MidnightLootFrame" movable="True" enableMouse="True">
+		<Size><AbsDimension x="384" y="512"/></Size>
+		<Anchors>
+			<Anchor point="TOPLEFT"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture name="MidnightLootIcon" file="interface\addons\MidnightLoot\TLMLogo">
+					<Size>
+						<AbsDimension x="56" y="56"/>
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset>
+								<AbsDimension x="9" y="-8"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="DIALOG">
+				<Texture file="Interface\QUESTFRAME\UI-QUESTLOG-TOPLEFT">
+					<Size>
+						<AbsDimension x="256" y="256"/>
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT"/>
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\QUESTFRAME\UI-QUESTLOG-TOPRIGHT">
+					<Size>
+						<AbsDimension x="128" y="256"/>
+					</Size>
+					<Anchors>
+						<Anchor point="TOPRIGHT"/>
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\QUESTFRAME\UI-QUESTLOG-BOTLEFT">
+					<Size>
+						<AbsDimension x="256" y="256"/>
+					</Size>
+					<Anchors>
+						<Anchor point="BOTTOMLEFT"/>
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\QUESTFRAME\UI-QUESTLOG-BOTRIGHT">
+					<Size>
+						<AbsDimension x="128" y="256"/>
+					</Size>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT">
+						<Offset>
+							<AbsDimension x="-30" y="-8"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<ScrollFrame name="$parentScrollFrame" inherits="HybridScrollFrameTemplate" parentKey="scrollFrame">
+				<Size x="300" y="336"/>
+				<Anchors>
+					<Anchor point="TOPLEFT" x="20" y="-74"/>
+				</Anchors>
+				<Frames>
+					<Slider name="$parentScrollBar" inherits="HybridScrollBarTemplate" parentKey="scrollBar">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="2.75" y="-13"/>
+							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" x="2.75" y="13.75"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:SetScale(1.1);
+								MidnightLootFrameScrollFrameScrollBarTop:Hide();
+								MidnightLootFrameScrollFrameScrollBarMiddle:Hide();
+								MidnightLootFrameScrollFrameScrollBarBottom:Hide();
+							</OnLoad>
+						</Scripts>
+					</Slider>
+				</Frames>
+			</ScrollFrame>
+		</Frames>
+		<Scripts>
+			<OnLoad function="MidnightLoot_OnLoad"/>
+			<OnDragStart function="MidnightLoot_OnDragStart"/>
+			<OnDragStop function="MidnightLoot_OnDragStop"/>
+			<OnEvent function="MidnightLoot_EventHandler"/>
+		</Scripts>
+	</Frame>
+	
+</Ui>
