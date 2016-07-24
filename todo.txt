@@ -1,0 +1,60 @@
+UI & Utility
+	MidnightLoot_OnLoad(self)
+	MidnightLoot_Show(self)
+	MidnightLoot_Hide(self)
+	MidnightLoot_OnDragStart(self)
+	MidnightLoot_OnDragStop(self)
+	MidnightLoot_LootIcon_OnEnter(self)
+	.BossKilled(???)
+	.UpdateSpecs(???) --Exists already, but in _EventHandler()
+	MidnightLoot_EventHandler(self, event, ...)
+		"BOSS_KILL"
+		"ENCOUNTER_LOOT_RECEIVED"
+		{system message for rolling}
+		"CHAT_MSG_ADDON"
+			"NEW_LOOT"
+			"UPDATE_LOOT"
+			"UPDATE_SPECS"
+			"INTENT"
+			"WINNER"
+			"TRADED"
+			"ROLLOFF_START"
+			"ROLL_WARNING"
+			"ERROR"
+	.UpdateActiveLoot()
+	.UpdateLootButtons(self, state1, text1, state2, text2)
+	.RemoveLoot(index)
+	.SetInstanceID()
+	.GetActiveLootIndex()
+
+
+Item Detection & Categorization
+	.LootDropped(...)
+	.AddLoot(itemLink, itemID, owner)
+	.UpdateLootItem(itemID, owner, ownerStatus)
+	.TestTradeable(itemLink)
+	.RollLoot(itemID, owner, intent)
+
+Loot Award Decision
+	.NewRoll(player, roll)
+	.NewIntent(player, intent)
+	.AddResult(player, roll, intent)
+	.DetermineWinner(index)
+	.RollComplete(itemID, owner)
+	.ItemWon(item)
+	.TestTradeRange(???)
+	.TradeLoot(???)
+ 
+TODO
+Finish button states for post roll states
+Hook buttons to decision architecture
+Error passing to my client for debugging
+Slash Commands
+Loot log architecture
+Build intentions/rolls tables (on boss kill?)
+Set disenchanter
+Group lootmaster only messages? Do I need more code for non-lootmasters? Maybe just whispers then?
+
+Brainstorming
+-Display of button information should be handled for all states via .UpdateActiveLoot().  That includes after awards.
+-Include a check against the spec data in the determine winner to make sure no buggery occurred client-side with spec options.
