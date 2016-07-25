@@ -26,8 +26,11 @@ UI & Utility
 	.RemoveLoot(index)
 	.SetInstanceID()
 	.GetActiveLootIndex()
+	.GetFullName(raidIndex)
 
-
+**********TEST playerName IN .LootDropped FOR OUTPUT**********
+	
+	
 Item Detection & Categorization
 	.LootDropped(...)
 	.AddLoot(itemLink, itemID, owner)

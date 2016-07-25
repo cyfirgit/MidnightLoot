@@ -1,11 +1,12 @@
 local addonEnabled = true;
+local playerNameTable = {UnitFullName("PLAYER")}
 MidnightLootSaved = {};
 MidnightLoot = {};
 MidnightLoot.LOOT_ITEM_HEIGHT = 50;
 MidnightLoot.ROLL_KINDS = {'main', 'off', 'pass'}
 MidnightLoot.activeLootItems = {};
 _, MidnightLoot.playerClass = UnitClass('PLAYER');
-MidnightLoot.playerName = {UnitName('PLAYER')};
+MidnightLoot.playerName = playerNameTable[1].."-"..playerNameTable[2];
 MidnightLoot.errors = {}
 MidnightLoot.PREFIX = 'MidnightLoot'
 MidnightLoot.activeRoster = {}
@@ -305,12 +306,6 @@ function MidnightLoot.SetInstanceID() -- ***NEED A HOOK TO FIRE THIS WHEN ENTERI
 	MidnightLoot.instanceID = EJ_GetCurrentInstance()
 end
 
---[[function MidnightLoot.CalculateDynamic(offset)
-	local past = math.floor(offset / MidnightLoot.LOOT_ITEM_HEIGHT)
-	local partial = offset % MidnightLoot.LOOT_ITEM_HEIGHT
-	return past, partial
-end]]
-
 function MidnightLoot.GetActiveLootIndex(itemID, owner)
 	--Returns the index of a unique item in the activeLootItems table.
 	for index, item in ipairs(MidnightLoot.activeLootItems) do
@@ -319,6 +314,23 @@ function MidnightLoot.GetActiveLootIndex(itemID, owner)
 		end
 	end
 end
+
+function MidnightLoot.GetFullName(raidID)
+	local _, homeRealm = UnitFullName("PLAYER")
+	local name = GetRaidRosterInfo(raidID)
+	local isCrossRealm = name:find("-")
+	if not isCrossRealm then
+		name = name.."-"..homeRealm
+	end
+	return name
+end
+	
+
+--[[function MidnightLoot.CalculateDynamic(offset)
+	local past = math.floor(offset / MidnightLoot.LOOT_ITEM_HEIGHT)
+	local partial = offset % MidnightLoot.LOOT_ITEM_HEIGHT
+	return past, partial
+end]]
 
 
 --[[* * * * * Item Detection & Categorization * * * * *]]--
