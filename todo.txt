@@ -1,6 +1,6 @@
 UI & Utility
 	MidnightLoot_OnLoad(self)
-	MidnightLoot_Show(self)*
+	MidnightLoot_Show(self)
 	MidnightLoot_Hide(self)
 	MidnightLoot_OnDragStart(self)
 	MidnightLoot_OnDragStop(self)
@@ -10,16 +10,16 @@ UI & Utility
 	MidnightLoot_EventHandler(self, event, ...)
 		"BOSS_KILL"
 		"ENCOUNTER_LOOT_RECEIVED"
-		{system message for rolling}*
+		{system message for rolling}
 		"CHAT_MSG_ADDON"
 			"NEW_LOOT"
 			"UPDATE_LOOT"
 			"UPDATE_SPECS"
 			"INTENT"
 			"WINNER"
-			"TRADED"*
-			"ROLLOFF_START"*
-			"ROLL_WARNING"*
+			"TRADED"
+			"ROLLOFF_START"
+			"ROLL_WARNING"
 			"ERROR"
 	.UpdateActiveLoot()
 	.UpdateLootButtons(self, state1, text1, state2, text2)
@@ -44,9 +44,9 @@ Loot Award Decision
 	.AddResult(player, roll, intent)
 	.DetermineWinner(index)
 	.RollComplete(itemID, owner)
-	.ItemWon(item)*
-	.TestTradeRange(???)*
-	.TradeLoot(???)*
+	.ItemWon(item)
+	.TestTradeRange(???)
+	.TradeLoot(???)
  
 TODO
 Finish button states for post roll states
