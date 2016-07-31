@@ -5,12 +5,12 @@ UI & Utility
 	MidnightLoot_OnDragStart(self)
 	MidnightLoot_OnDragStop(self)
 	MidnightLoot_LootIcon_OnEnter(self)
-	.BossKilled(???)
-	.UpdateSpecs(???) --Exists already, but in _EventHandler()
 	MidnightLoot_EventHandler(self, event, ...)
 		"BOSS_KILL"
 		"ENCOUNTER_LOOT_RECEIVED"
-		{system message for rolling}*
+		"CHAT_MSG_SYSTEM"
+		"GROUP_ROSTER_CHANGED"
+		"PLAYER_LOGIN"
 		"CHAT_MSG_ADDON"
 			"NEW_LOOT"
 			"UPDATE_LOOT"
@@ -19,16 +19,19 @@ UI & Utility
 			"WINNER"
 			"TRADED"*
 			"ROLLOFF_START"*
-			"ROLL_WARNING"*
+			"ROLL_WARNING"* this is the warning about extra /roll events.
 			"ERROR"
+	.LoadPlayerName()
+	.BossKilled(...)
+	.UpdateSpecs(messageData)
 	.UpdateActiveLoot()
 	.UpdateLootButtons(self, state1, text1, state2, text2)
 	.RemoveLoot(index)
 	.SetInstanceID()
 	.GetActiveLootIndex()
 	.GetFullName(raidIndex)
-
-**********TEST playerName IN .LootDropped FOR OUTPUT**********
+	.LeaveRaid()
+	.CheckGroupStatus()
 	
 	
 Item Detection & Categorization
@@ -37,6 +40,7 @@ Item Detection & Categorization
 	.UpdateLootItem(itemID, owner, ownerStatus)
 	.TestTradeable(itemLink)
 	.RollLoot(itemID, owner, intent)
+	.RequestLootStatus* multiple functions?  need to think this one through
 
 Loot Award Decision
 	.NewRoll(player, roll)
@@ -54,7 +58,6 @@ Hook buttons to decision architecture
 Error passing to my client for debugging
 Slash Commands
 Loot log architecture
-Build intentions/rolls tables (on boss kill?)
 Set disenchanter
 Group lootmaster only messages? Do I need more code for non-lootmasters? Maybe just whispers then?
 

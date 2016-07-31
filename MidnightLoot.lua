@@ -1,15 +1,15 @@
 local addonEnabled = true;
-local playerNameTable = {UnitFullName("PLAYER")}
 MidnightLootSaved = {};
 MidnightLoot = {};
 MidnightLoot.LOOT_ITEM_HEIGHT = 50;
 MidnightLoot.ROLL_KINDS = {'main', 'off', 'pass'}
 MidnightLoot.activeLootItems = {};
 _, MidnightLoot.playerClass = UnitClass('PLAYER');
-MidnightLoot.playerName = playerNameTable[1].."-"..playerNameTable[2];
 MidnightLoot.errors = {}
 MidnightLoot.PREFIX = 'MidnightLoot'
 MidnightLoot.activeRoster = {}
+MidnightLoot.rolls = {}
+MidnightLoot.intentions = {}
 MidnightLoot.classReference = {
 	['MAGE'] = {
 		['index'] = 8,
@@ -131,6 +131,9 @@ function MidnightLoot_OnLoad(self)
 	
 	self:RegisterEvent("BOSS_KILL")
 	self:RegisterEvent("ENCOUNTER_LOOT_RECEIVED")
+	self:RegisterEvent("CHAT_MSG_SYSTEM")
+	self:RegisterEvent("GROUP_ROSTER_CHANGED")
+	self:RegisterEvent("PLAYER_LOGIN")
 	self:RegisterEvent("CHAT_MSG_ADDON")
 	
 	self.scrollFrame.update = MidnightLoot.UpdateActiveLoot;
@@ -140,6 +143,13 @@ function MidnightLoot_OnLoad(self)
 	self.scrollFrame.scrollBar.doNotHide = true;
 	HybridScrollFrame_CreateButtons(self.scrollFrame, "MidnightLootItemFrameTemplate", 0, 0, "TOPLEFT", "TOPLEFT", 0, 0, "TOPLEFT", "BOTTOMLEFT");
 	MidnightLoot.UpdateActiveLoot();
+	
+	if UnitInParty("PLAYER") or UnitInRaid("PLAYER") then
+		MidnightLoot.isInGroup = true
+		--***Request Loot Status
+	else
+		MidnightLoot.isInGroup = false
+	end
 end
 
 --***function MidnightLoot_Show(self)
@@ -163,49 +173,17 @@ function MidnightLoot_LootIcon_OnEnter(self)
 	CursorUpdate(self);
 end
 
-function MidnightLoot.BossKilled(...)
-	MidnightLoot.lastBoss = ...
-	--Update the raid roster.
-	table.wipe(MidnightLoot.activeRoster)
-	for i = 1, GetNumGroupMembers() do
-		local name, realm = UnitName("Raid"..i)
-		local _, playerClass = UnitClass("Raid"..i)
-		local player = name.."-"..realm
-		MidnightLoot.activeRoster[player] = {
-			['playerClass'] = playerClass,
-			['isInRollOff'] = false,
-			['rollOffRolls'] = {};
-		}
-	end
-end
-
-function MidnightLoot.UpdateSpecs(messageData)
-	--*** function to update specs should determine what players' changed and only update those.
-	--[[Example of output:
-			MidnightLoot.eligibleSpecs['Volstatsz-AeriePeak'] = {
-				[250] = 'Eligible',
-				[251] = 'Eligible - Offspec',
-				[252] = 'Ineligible',
-				}
-	]]--
-	local _, player, playerClass, spec1, spec2, spec3, spec4 = messageData;
-	local specs = {};
-	local eligibility = {spec1, spec2, spec3, spec4};
-	for specID, _ in ipairs(MidnightLoot.classReference[playerClass].specs) do
-		table.insert(specs, specID);
-	end
-	for i = 1, 4 do
-		if (i <= 2 or playerClass ~= "DEMONHUNTER") and (i <= 3 or playerClass == "DRUID") then
-			MidnightLoot.eligibleSpecs[player][specs[i]] = eligibility[i];
-		end
-	end
-end
-
 function MidnightLoot_EventHandler(self, event, ...)
 	if event == "BOSS_KILL" then
 		MidnightLoot.BossKilled(...)
 	elseif event == "ENCOUNTER_LOOT_RECEIVED" then
 		MidnightLoot.LootDropped(...)
+	elseif event == "CHAT_MSG_SYSTEM" then
+		MidnightLoot.NewRoll(...)
+	elseif event == "GROUP_ROSTER_CHANGED" then
+		MidnightLoot.CheckGroupStatus()
+	elseif event == "PLAYER_LOGIN" then
+		MidnightLoot.LoadPlayerName()
 	elseif event == "CHAT_MSG_ADDON" and ... == "MidnightLoot" then
 		local _, messageStr, _, sender = ...;
 		local messageData = {strsplit("~", messageStr)};
@@ -229,6 +207,56 @@ function MidnightLoot_EventHandler(self, event, ...)
 			local errorMessage = messageData[2]
 			table.insert(MidnightLoot.errors, {player = sender, timestamp = GetTime(), message = errorMessage});
 		end	
+	end
+end
+
+function MidnightLoot.LoadPlayerName()
+	local playerNameTable = {UnitFullName("PLAYER")}
+	MidnightLoot.playerName = playerNameTable[1].."-"..playerNameTable[2];
+	MidnightLoot.homeRealm = playerNameTable[2]
+end
+	
+
+function MidnightLoot.BossKilled(...)
+	if UnitInRaid("PLAYER") or UnitInParty("PLAYER") then
+		MidnightLoot.lastBoss = ...
+		--Update the raid roster.
+		table.wipe(MidnightLoot.activeRoster)
+		table.wipe(MidnightLoot.rolls)
+		table.wipe(MidnightLoot.intentions)
+		for i = 1, GetNumGroupMembers() do
+			local player = MidnightLoot.GetFullName(i)
+			local _, playerClass = UnitClass("Raid"..i)
+			MidnightLoot.activeRoster[player] = {
+				['playerClass'] = playerClass,
+				['isInRollOff'] = false,
+				['rollOffRolls'] = {};
+			}
+			MidnightLoot.rolls[player] = {}
+			MidnightLoot.intentions[player] = {}
+		end
+	end
+end
+
+function MidnightLoot.UpdateSpecs(messageData)
+	--*** function to update specs should determine what players' changed and only update those.
+	--[[Example of output:
+			MidnightLoot.eligibleSpecs['Volstatsz-AeriePeak'] = {
+				[250] = 'Eligible',
+				[251] = 'Eligible - Offspec',
+				[252] = 'Ineligible',
+				}
+	]]--
+	local _, player, playerClass, spec1, spec2, spec3, spec4 = messageData;
+	local specs = {};
+	local eligibility = {spec1, spec2, spec3, spec4};
+	for specID, _ in ipairs(MidnightLoot.classReference[playerClass].specs) do
+		table.insert(specs, specID);
+	end
+	for i = 1, 4 do
+		if (i <= 2 or playerClass ~= "DEMONHUNTER") and (i <= 3 or playerClass == "DRUID") then
+			MidnightLoot.eligibleSpecs[player][specs[i]] = eligibility[i];
+		end
 	end
 end
 
@@ -315,14 +343,25 @@ function MidnightLoot.GetActiveLootIndex(itemID, owner)
 	end
 end
 
-function MidnightLoot.GetFullName(raidID)
-	local _, homeRealm = UnitFullName("PLAYER")
-	local name = GetRaidRosterInfo(raidID)
+function MidnightLoot.GetFullName(player)
+	local name = ''
+	if type(player) == 'number' then
+		name = GetRaidRosterInfo(raidID)
+	else
+		name = player
+	end
 	local isCrossRealm = name:find("-")
 	if not isCrossRealm then
-		name = name.."-"..homeRealm
+		name = name.."-"..MidnightLoot.homeRealm
 	end
 	return name
+end
+
+function MidnightLoot.CheckGroupStatus()
+	if not (UnitInParty("PLAYER") or UnitInRaid("PLAYER")) and MidnightLoot.isInGroup then
+		MidnightLoot.lastBoss = nil
+		MidnightLoot.isInGroup = false
+	end
 end
 	
 
@@ -337,9 +376,10 @@ end]]
 
 
 function MidnightLoot.LootDropped(...)
-	local encounterID, itemID, itemLink, quantity, playerName, className = ...;
-	local status = "";
+	local encounterID, itemID, itemLink, quantity, simpleName, className = ...;
+	local playerName = MidnightLoot.GetFullName(simpleName)
 	if encounterID == MidnightLoot.lastBoss and playerName == MidnightLoot.playerName then
+		local status = "";
 		if MidnightLoot.TestTradable(itemLink) then
 			status = "Pending"
 		else
@@ -449,60 +489,66 @@ end
 --[[* * * * * Loot Award Decision * * * * *]]--
 
 
-function MidnightLoot.NewRoll(player, roll)
-	local intentions = MidnightLoot.intentions[player]
-	--[[We have to check if the player has a rolloff active,
-	and handle the roll differently in that case.]]
-	if MidnightLoot.activeRoster[player].isInRollOff == true then
-		table.insert(MidnightLoot.activeRoster[player].rollOffRolls, roll)
-		for index, item in ipairs(MidnightLoot.activeLootItems) do
-			if item.tiedRollers ~= nil then
-				local rollOffComplete = true
-				for _, result in ipairs(item.tiedRollers) do
-					if getn(MidnightLoot.activeRoster[result.player].rollOffRolls) == 0 then
-						rollOffComplete = false
-						break
-					end
-				end
-				if rollOffComplete == true then
-					--This item's rolloff has rolls in from all players.
-					--[[Pop the first rolloff from each of the competing
-					players' rolloff rolls and place it in the tiedRollers
-					table, and start building a highRoller/tiedRollers again.]]
-					local highRoller = {['rollOffRoll'] = 0}
-					local tiedRollers = {}
+function MidnightLoot.NewRoll(...)
+	local message = ...
+	if message:find("1-100") ~= nil and getn(MidnightLoot.activeLootItems) > 0 then
+		local msgPlayer, msgRoll = message:match("^(.+) .+ (%d+) %(1%-100%)$")
+		local player = MidnightLoot.GetFullName(msgPlayer)
+		local roll = tonumber(msgRoll)
+		local intentions = MidnightLoot.intentions[player]
+		--[[We have to check if the player has a rolloff active,
+		and handle the roll differently in that case.]]
+		if MidnightLoot.activeRoster[player].isInRollOff == true then
+			table.insert(MidnightLoot.activeRoster[player].rollOffRolls, roll)
+			for index, item in ipairs(MidnightLoot.activeLootItems) do
+				if item.tiedRollers ~= nil then
+					local rollOffComplete = true
 					for _, result in ipairs(item.tiedRollers) do
-						result.rollOffRoll = table.remove(MidnightLoot.activeRoster[result.player].rollOffRolls, 1)
-						if result.rollOffRoll > highRoller.rollOffRoll then
-							highRoller = result
-							table.wipe(tiedRollers)
-						elseif result.rollOffRoll == highRoller.rollOffRoll then
-							table.insert(tiedRollers, result)
+						if getn(MidnightLoot.activeRoster[result.player].rollOffRolls) == 0 then
+							rollOffComplete = false
+							break
 						end
 					end
-					--If we still have a tie, start it all over.  Otherwise, alhamdu Allah we're done and tell everyone that.
-					if getn(tiedRollers) > 0 then
-						table.insert(tiedRollers, highRoller)
-						item.tiedRollers = tiedRollers
-						for _, result in ipairs(tiedRollers) do
-							SendAddonMessage(MidnightLoot.PREFIX, ("ROLLOFF_START".."~"..item.ID.."~"..item.owner), "WHISPER", result.player)
+					if rollOffComplete == true then
+						--This item's rolloff has rolls in from all players.
+						--[[Pop the first rolloff from each of the competing
+						players' rolloff rolls and place it in the tiedRollers
+						table, and start building a highRoller/tiedRollers again.]]
+						local highRoller = {['rollOffRoll'] = 0}
+						local tiedRollers = {}
+						for _, result in ipairs(item.tiedRollers) do
+							result.rollOffRoll = table.remove(MidnightLoot.activeRoster[result.player].rollOffRolls, 1)
+							if result.rollOffRoll > highRoller.rollOffRoll then
+								highRoller = result
+								table.wipe(tiedRollers)
+							elseif result.rollOffRoll == highRoller.rollOffRoll then
+								table.insert(tiedRollers, result)
+							end
 						end
-					else
-						item.winner = highRoller
-						MidnightLoot.RollComplete(itemID, owner)
-						item.tiedRollers = nil
+						--If we still have a tie, start it all over.  Otherwise, alhamdu Allah we're done and tell everyone that.
+						if getn(tiedRollers) > 0 then
+							table.insert(tiedRollers, highRoller)
+							item.tiedRollers = tiedRollers
+							for _, result in ipairs(tiedRollers) do
+								SendAddonMessage(MidnightLoot.PREFIX, ("ROLLOFF_START".."~"..item.ID.."~"..item.owner), "WHISPER", result.player)
+							end
+						else
+							item.winner = highRoller
+							MidnightLoot.RollComplete(itemID, owner)
+							item.tiedRollers = nil
+						end
 					end
 				end
-			end
-		end				
-	else
-	--[[Check if there is a matching loot intent to pair a roll to. If there
-	is, link them and start saving to results. If not, save the roll for an
-	intent to arrive.]]
-		if getn(intentions) > 0 then
-			MidnightLoot.AddResult(player, roll, table.remove(intentions, 1))
+			end				
 		else
-			table.insert(MidnightLoot.rolls[player], roll)
+		--[[Check if there is a matching loot intent to pair a roll to. If there
+		is, link them and start saving to results. If not, save the roll for an
+		intent to arrive.]]
+			if getn(intentions) > 0 then
+				MidnightLoot.AddResult(player, roll, table.remove(intentions, 1))
+			else
+				table.insert(MidnightLoot.rolls[player], roll)
+			end
 		end
 	end
 end
