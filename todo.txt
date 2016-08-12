@@ -49,8 +49,6 @@ Loot Award Decision
 	.DetermineWinner(index)
 	.RollComplete(itemID, owner)
 	.ItemWon(item)*
-	.TestTradeRange(???)*
-	.TradeLoot(???)*
  
 TODO
 Finish button states for post roll states
