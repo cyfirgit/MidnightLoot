@@ -238,9 +238,7 @@
 			</ScrollFrame>
 		</Frames>
 		<Scripts>
-			<OnLoad>
-				MidnightLoot_OnLoad(self)
-			</OnLoad>
+			<OnLoad function="MidnightLoot_OnLoad"/>
 			<OnDragStart function="MidnightLoot_OnDragStart"/>
 			<OnDragStop function="MidnightLoot_OnDragStop"/>
 			<OnEvent function="MidnightLoot_EventHandler"/>

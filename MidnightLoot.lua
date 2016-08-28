@@ -196,6 +196,7 @@ function MidnightLoot_LootButtonClick(self, kind)
 	end
 	if item.owner == MidnightLoot.playerName then
 		SendAddonMessage(MidnightLoot.PREFIX, "UPDATE_LOOT".."~"..item.ID.."~"..item.owner.."~"..item.status, "RAID")
+	end
 	SendAddonMessage(MidnightLoot.PREFIX, "INTENT".."~"..intent.itemID.."~"..intent.owner.."~"..intent.kind, "RAID")
 	MidnightLoot.UpdateActiveLoot()
 end
