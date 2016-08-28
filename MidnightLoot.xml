@@ -20,9 +20,17 @@
 				</Texture>
 			</Layer>
 			<Layer level="OVERLAY">
-				<FontString parentKey="itemName" inherits="GameFontNormalLeft">
+				<FontString name="$parentItemName" parentKey="itemName" inherits="GameFontNormalLeft">
 					<Size><AbsDimension x="150" y="20"/></Size>
 					<Anchors><Anchor point="TOPLEFT" x="55" y="-2" /></Anchors>
+				</FontString>
+				<FontString name="$parentOwner" parentKey="owner" inherits="GameFontNormalSmallLeft">
+					<Size><AbsDimension x="150" y="12"/></Size>
+					<Anchors><Anchor point="TOPLEFT" relativeTo="$parentItemName" relativePoint="BOTTOMLEFT" x="0" y="0" /></Anchors>
+				</FontString>
+				<FontString name="$parentWinner" parentKey="winner" inherits="GameFontNormalSmallLeft">
+					<Size><AbsDimension x="150" y="12"/></Size>
+					<Anchors><Anchor point="TOPLEFT" relativeTo="$parentOwner" relativePoint="BOTTOMLEFT" x="0" y="0" /></Anchors>
 				</FontString>
 			</Layer>
 		</Layers>
@@ -53,13 +61,79 @@
 					</OnUpdate>
 				</Scripts>
 			</Button>
-			<Button name="$parentButton1" inherits="UIPanelButtonTemplate" parentKey="button1" hidden="True">
-				<Size><AbsDimension x="80" y="22"/></Size>
+			<Button name="$parentOffSpecButton" inherits="UIPanelButtonTemplate" parentKey="offSpecButton" hidden="True">
+				<Size><AbsDimension x="24" y="22"/></Size>
 				<Anchors><Anchor point="TOPRIGHT" x="-4" y="-2"/></Anchors>
+				<Layers>
+					<Layer level="ART">
+						<Texture file="Interface\Buttons\UI-GroupLoot-Dice-Up">
+							<Size><AbsDimension x="12" y="12"/></Size>
+							<Anchors><Anchor point="TOPRIGHT" x="-4.5" y="-4.5"/></Anchors>
+						</Texture>
+					</Layer>
+					<Layer level="OVERLAY">
+						<Texture file="Interface\Buttons\UI-MicroStream-Green">
+							<Size><AbsDimension x="12" y="12"/></Size>
+							<Anchors><Anchor point="BOTTOMLEFT" x="1.5" y="1.5"/></Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnClick>
+						MidnightLoot_LootButtonClick(self, "Off Spec")
+					</OnClick>
+				</Scripts>
 			</Button>
-			<Button name="$parentButton2" inherits="UIPanelButtonTemplate" parentKey="button2" hidden="True">
-				<Size><AbsDimension x="80" y="22"/></Size>
+			<Button name="$parentPassButton" inherits="UIPanelButtonTemplate" parentKey="passButton" hidden="True">
+				<Size><AbsDimension x="24" y="22"/></Size>
 				<Anchors><Anchor point="TOPRIGHT" x="-4" y="-25"/></Anchors>
+				<Layers>
+					<Layer level="ART">
+						<Texture file="Interface\Buttons\UI-GroupLoot-Pass-Up">
+							<Size><AbsDimension x="16" y="16"/></Size>
+							<Anchors><Anchor point="TOPLEFT" x="4" y="-4"/></Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnClick>
+						MidnightLoot_LootButtonClick(self, "Pass")
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="$parentMainSpecButton" inherits="UIPanelButtonTemplate" parentKey="mainSpecButton" hidden="True">
+				<Size><AbsDimension x="24" y="22"/></Size>
+				<Anchors><Anchor point="TOPRIGHT" x="-29" y="-2"/></Anchors>
+				<Layers>
+					<Layer level="ART">
+						<Texture file="Interface\Buttons\UI-GroupLoot-Dice-Up">
+							<Size><AbsDimension x="16" y="16"/></Size>
+							<Anchors><Anchor point="TOPLEFT" x="4.5" y="-4.5"/></Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnClick>
+						MidnightLoot_LootButtonClick(self, "Main Spec")
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="$parentTransmogButton" inherits="UIPanelButtonTemplate" parentKey="transmogButton" hidden="True">
+				<Size><AbsDimension x="24" y="22"/></Size>
+				<Anchors><Anchor point="TOPRIGHT" x="-29" y="-25"/></Anchors>
+				<Layers>
+					<Layer level="ART">
+						<Texture file="Interface\MINIMAP\TRACKING\Banker">
+							<Size><AbsDimension x="16" y="16"/></Size>
+							<Anchors><Anchor point="TOPLEFT" x="4" y="-4"/></Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnClick>
+						MidnightLoot_LootButtonClick(self, "Transmog")
+					</OnClick>
+				</Scripts>
 			</Button>
 		</Frames>
 	</Frame>
@@ -75,7 +149,7 @@
 	
 	
 	<!--Loot Frame-->
-	<Frame name="MidnightLootFrame" movable="True" enableMouse="True">
+	<Frame name="MidnightLootFrame" movable="True" enableMouse="True" hidden="True">
 		<Size><AbsDimension x="384" y="512"/></Size>
 		<Anchors>
 			<Anchor point="TOPLEFT"/>

@@ -126,7 +126,6 @@ MidnightLoot.classReference = {
 
 
 function MidnightLoot_OnLoad(self)
-	self:Show();
 	self:RegisterForDrag("LeftButton");
 	
 	self:RegisterEvent("BOSS_KILL")
@@ -135,6 +134,11 @@ function MidnightLoot_OnLoad(self)
 	self:RegisterEvent("GROUP_ROSTER_CHANGED")
 	self:RegisterEvent("PLAYER_LOGIN")
 	self:RegisterEvent("CHAT_MSG_ADDON")
+	
+	SLASH_MIDNIGHTLOOT1, SLASH_MIDNIGHTLOOT2 = "/ml", "/midnightloot"
+	SlashCmdList["MIDNIGHTLOOT"] = function(msg, editBox)
+		self:SetShown(not self:IsShown())
+	end
 	
 	self.scrollFrame.update = MidnightLoot.UpdateActiveLoot;
 	self.scrollFrame.buttonHeight = MidnightLoot.LOOT_ITEM_HEIGHT;
@@ -169,8 +173,31 @@ end
 function MidnightLoot_LootIcon_OnEnter(self)
 	local parent = self:GetParent();
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:SetItemByID(parent.item.ID);
+	GameTooltip:SetHyperlink(parent.item.link);
 	CursorUpdate(self);
+end
+
+function MidnightLoot_LootButtonClick(self, kind)
+	local parent = self:GetParent()
+	local item = parent.item
+	local intent = {
+		["itemID"] = item.ID,
+		["owner"] = item.owner,
+		["kind"] = kind
+		}
+	if item.owner == MidnightLoot.playerName and kind == "Main Spec" then
+		item.status = "Claimed"
+		intent.kind = item.status
+	elseif kind == "Pass" then
+		item.status = "Passed"
+	else
+		item.status = ("Rolled - "..kind)
+		RandomRoll(1, 100)
+	end
+	if item.owner == MidnightLoot.playerName then
+		SendAddonMessage(MidnightLoot.PREFIX, "UPDATE_LOOT".."~"..item.ID.."~"..item.owner.."~"..item.status, "RAID")
+	SendAddonMessage(MidnightLoot.PREFIX, "INTENT".."~"..intent.itemID.."~"..intent.owner.."~"..intent.kind, "RAID")
+	MidnightLoot.UpdateActiveLoot()
 end
 
 function MidnightLoot_EventHandler(self, event, ...)
@@ -184,24 +211,37 @@ function MidnightLoot_EventHandler(self, event, ...)
 		MidnightLoot.CheckGroupStatus()
 	elseif event == "PLAYER_LOGIN" then
 		MidnightLoot.LoadPlayerName()
-	elseif event == "CHAT_MSG_ADDON" and ... == "MidnightLoot" then
+	elseif event == "CHAT_MSG_ADDON" and ... == MidnightLoot.PREFIX then
 		local _, messageStr, _, sender = ...;
 		local messageData = {strsplit("~", messageStr)};
 		if messageData[1] == "NEW_LOOT" then
-			local _, itemLink, itemID, status = messageData;
-			MidnightLoot.AddLoot(itemLink, itemID, sender);
+			local itemLink = messageData[2];
+			local status = messageData[3];
+			MidnightLoot.AddLoot(itemLink, status, sender);
 		elseif messageData[1] == "UPDATE_LOOT" then
-			local _, itemID, owner, status = messageData;
+			local itemID = messageData[2];
+			local owner = messageData[3];
+			local status = messageData[4];
 			MidnightLoot.UpdateLootItem(itemID, owner, status);
 		elseif messageData[1] == "UPDATE_SPECS" then 
 			MidnightLoot.UpdateSpecs(messageData)
 		elseif messageData[1] == "INTENT" then
-			local _, itemID, owner, kind = messageData
-			MidnightLoot.NewIntent(sender, itemID, owner, kind)
-		elseif messageData[1] == "WINNER" then
-			local _, itemID, owner, player, kind = messageData
+			local itemID = messageData[2];
+			local owner = messageData[3];
+			local kind = messageData[4];
+			local intent = {
+				['itemID'] = itemID,
+				['owner'] = owner,
+				['kind'] = kind
+			}
+			MidnightLoot.NewIntent(sender, intent)
+		elseif messageData[1] == "WINNER" and sender == MidnightLoot.LootMaster then
+			local itemID = messageData[2];
+			local owner = messageData[3];
+			local player = messageData[4];
+			local kind = messageData[5];
 			MidnightLoot.ItemWon(itemID, owner, player, kind)
-		elseif messageData[1] == "ROLLOFF_START" then
+		elseif messageData[1] == "ROLLOFF_START" and sender == MidnightLoot.LootMaster then
 			RandomRoll(1,100)
 		elseif messageData[1] == "ERROR" then
 			local errorMessage = messageData[2]
@@ -238,6 +278,38 @@ function MidnightLoot.BossKilled(...)
 	end
 end
 
+function MidnightLoot.ParseItemLink(itemLink)
+    local _, _, type = string.find(itemLink, "|.-|H(%a+).+")
+    if type == "item" then
+        local _, _, itemID, enchant, gem1, gem2, gem3, gem4, suffixID, uniqueID, linkLevel, specID, upgradeTypeID, instanceDifficultyID, numBonusIDs, bonusIDString, name = string.find(itemLink, "|.-|Hitem:(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d-):(%d*):([:%d+]+)|h%[(.-)%]|.+")
+		local bonusIDs = {}
+		local upgradeValue, unknown1, unknown2, unknown3 = nil, nil, nil, nil
+		local numElements = 2 -- 2 because unknown3 will be the remainder on bonusIDString.
+		if numBonusIDs ~= "" then
+			numBonusIDs = tonumber(numBonusIDs)
+			numElements = numElements + numBonusIDs
+		else
+			numBonusIDs = 0
+        end
+		if upgradeTypeID ~= nil then
+			numElements = numElements + 1
+		end
+		for i = 1, numElements do
+			local _, _, bonus = string.find(bonusIDString, "(%d+):.*")
+			table.insert(bonusIDs, bonus)
+			bonusIDString = string.gsub(bonusIDString, "%d+:(.*)", "%1")
+		end
+		if upgradeTypeID ~= nil then
+			upgradeValue = table.remove(bonusIDs, numBonusIDs + 1)
+		end
+		unknown1 = table.remove(bonusIDs, numBonusIDs + 1)
+		unknown2 = table.remove(bonusIDs, numBonusIDs + 1)
+		_, _, unknown3 = string.find(bonusIDString, "(%d+).*")
+			
+        return itemID, enchant, gem1, gem2, gem3, gem4, suffixID, uniqueID, linkLevel, specID, upgradeTypeID, instanceDifficultyID, numBonusIDs, bonusIDs, upgradeValue, unknown1, unknown2, unknown3, name
+    end
+end
+
 function MidnightLoot.UpdateSpecs(messageData)
 	--*** function to update specs should determine what players' changed and only update those.
 	--[[Example of output:
@@ -272,28 +344,35 @@ function MidnightLoot.UpdateActiveLoot()
 		local button = buttons[i];
 		local index = math.floor(offset + i + 0.5);
 		if index <= numItems then
+			local buttonState = {}
 			button.item = MidnightLoot.activeLootItems[index]
 			button.color = ITEM_QUALITY_COLORS[button.item.quality]
 			button.lootIcon.texture:SetTexture(button.item.texture)
 			button.itemName:SetText(button.item.name)
+			button.owner:SetText(button.item.owner)
+			if button.item.winner ~= nil then
+				button.winner:SetText("Winner: "..button.item.winner)
+			else
+				button.winner:SetText(button.item.status)
+			end
 			button.itemName:SetVertexColor(button.color.r, button.color.g, button.color.b)
-			-- if the item belongs to the player, give them the option to claim or release it.
+			-- if the item belongs to the player, they get all options.
 			if button.item.status == "Pending" and button.item.owner == MidnightLoot.playerName then
-				MidnightLoot.UpdateLootButtons(button, "enabled", "Claim", "enabled", "Release")				
+				buttonState = {true, true, MidnightLoot.TestTransmog(button.item), true}				
 			-- if the player is eligible to roll on the item, give them the roll buttons.
 			elseif button.item.status == "Eligible" then
-				MidnightLoot.UpdateLootButtons(button, "enabled", "Main Spec", "enabled", "Offspec")				
+				buttonState = {true, true, MidnightLoot.TestTransmog(button.item), true}							
 			-- if the player is eligible to roll off-spec, give them the roll buttons with Main Spec disabled.
 			elseif button.item.status == "Eligible - Offspec" then
-				MidnightLoot.UpdateLootButtons(button, "disabled", "Main Spec", "enabled", "Offspec")				
-			-- if the player is supposed to trade the item, give them the trade button.
-			elseif button.item.status == "Tradeable" then
-				MidnightLoot.UpdateLootButtons(button, "hidden", "", "enabled", "Trade")			
+				buttonState = {false, true, MidnightLoot.TestTransmog(button.item), true}							
 			-- in all other states, the buttons are hidden.
 			else
-				MidnightLoot.UpdateLootButtons(button, "hidden", "", "hidden", "")
-			end
-			
+				buttonState = {false, false, false, false}				
+			end				
+			button.mainSpecButton:SetShown(buttonState[1])
+			button.offSpecButton:SetShown(buttonState[2])
+			button.transmogButton:SetShown(buttonState[3])
+			button.passButton:SetShown(buttonState[4])
 			button:Show();
 		else
 			button:Hide();
@@ -303,27 +382,6 @@ function MidnightLoot.UpdateActiveLoot()
 	local totalHeight = numItems * MidnightLoot.LOOT_ITEM_HEIGHT;
 	HybridScrollFrame_Update(scrollFrame, totalHeight, scrollFrame:GetHeight())
 end
-
-function MidnightLoot.UpdateLootButtons(self, state1, text1, state2, text2)
--- Change what the loot button frame displays.  See MidnightLoot.UpdateActiveLoot for context.
-local buttons = {{self.button1, state1, text1}, {self.button2, state2, text2}}
-	for i = 1, 2 do
-		local button = buttons[i][1]
-		local state = buttons[i][2]
-		local text = buttons[i][3]
-		if state == "hidden" then
-			button:Hide();
-		elseif state == "enabled" then
-			button:SetText(text);
-			button:Enable();
-			button:Show();
-		elseif state == "disabled" then
-			button:SetText(text);
-			button:Disable();
-			button:Show();
-		end;
-	end;
-end;
 
 function MidnightLoot.RemoveLoot(index)
 	table.remove(MidnightLoot.activeLootItems, index)
@@ -346,7 +404,7 @@ end
 function MidnightLoot.GetFullName(player)
 	local name = ''
 	if type(player) == 'number' then
-		name = GetRaidRosterInfo(raidID)
+		name = GetRaidRosterInfo(player)
 	else
 		name = player
 	end
@@ -380,22 +438,23 @@ function MidnightLoot.LootDropped(...)
 	local playerName = MidnightLoot.GetFullName(simpleName)
 	if encounterID == MidnightLoot.lastBoss and playerName == MidnightLoot.playerName then
 		local status = "";
-		if MidnightLoot.TestTradable(itemLink) then
+		if MidnightLoot.TestTradeable(itemLink) then
 			status = "Pending"
 		else
 			status = "Locked"
 		end
-		SendAddonMessage(MidnightLoot.PREFIX, "NEW_LOOT~"..itemLink.."~"..itemID.."~"..status, "RAID")
+		SendAddonMessage(MidnightLoot.PREFIX, "NEW_LOOT~"..itemLink.."~"..status, "RAID")
 	end
 end
 
-function MidnightLoot.AddLoot(itemLink, itemID, owner)
+function MidnightLoot.AddLoot(itemLink, status, owner)
 	local item = {};
 	item.results = {};
 	item.owner = owner;
-	item.ID = itemID;
+	item.ID = MidnightLoot.ParseItemLink(itemLink);
 	item.link = itemLink
-	item.name, _, item.quality, item.iLevel, item.reqLevel, item.class, item.subclass, item.maxStack, item.equipSlot, item.texture, item.vendorPrice = GetItemInfo(itemID)
+	item.status = status
+	item.name, _, item.quality, item.level, item.reqLevel, item.class, item.subclass, item.maxStack, item.equipSlot, item.texture, item.vendorPrice = GetItemInfo(itemLink)
 	--If it's an artifact relic, tag it with the appropriate type
 	if item.subclass == "Artifact Relic" then
 		_,_, item.relicType = C_ArtifactUI.GetRelicInfoByItemID(itemID)
@@ -406,27 +465,25 @@ function MidnightLoot.AddLoot(itemLink, itemID, owner)
 	else
 		SendAddonMessage(MidnightLoot.PREFIX, "ERROR~".."ID "..itemID.." has nil response.", "RAID")
 	end
+	MidnightLootFrame:Show()
 	return getn(MidnightLoot.activeLootItems);
 end
 
 function MidnightLoot.UpdateLootItem(itemID, owner, ownerStatus)
-	--Update loot information for an existing item.
+	--Update loot information for an existing item with the owner's decision.
 	local numItems = getn(MidnightLoot.activeLootItems);
 	local index = MidnightLoot.GetActiveLootIndex(itemID, owner)
+	local item = MidnightLoot.activeLootItems[index]
 	local eligibleSpecs = MidnightLoot.eligibleSpecs[MidnightLoot.playerName];
-	local isEligible = false;
 	local playerClass = MidnightLoot.classReference[MidnightLoot.playerClass]['index']
+	local isEligible = false;
 	
 	--Starting with ownerStatus, determine what the status of this loot item is to the player.
-	local item = MidnightLoot.activeLootItems[index]
-	-- ***PROBABLY SHOULD BUILD THE CHECKS FOR THE PLAYER'S OWN LOOT INTO HERE
 	if ownerStatus == "Claimed" then
 		item.status = "Claimed"
 	elseif ownerStatus == "Locked" then
 		item.status = "Locked"
-	elseif ownerStatus == "Pending" then
-		item.status = "Pending"		
-	elseif ownerStatus == "Released" then
+	elseif ownerStatus == "Off Spec" or ownerStatus == "Transmog" or ownerStatus == "Passed" then
 		if owner ~= MidnightLoot.playerName then
 			if item.equipSlot == "INVTYPE_TRINKET" or item.subclass == "Artifact Relic" then
 				--Cycle through the instance's loot, filtered by spec.
@@ -459,7 +516,36 @@ function MidnightLoot.UpdateLootItem(itemID, owner, ownerStatus)
 	end
 end
 
-function MidnightLoot.TestTradable(itemLink)
+function MidnightLoot.TestTradeable(itemLink)
+	--Loads an item link into a hidden tooltip, then scans the tooltip to determine if the item is tradable.
+	for i = 0, 4 do
+		for j = 1, GetContainterNumSlots(i) do
+			local item = {GetContainerItemInfo(i, j)}
+			local containerItemLink = item[7]
+			if containerItemLink == itemLink then
+				MidnightLootScanTooltip:ClearLines()
+				MidnightLootScanTooltip:SetHyperlink(containerItemLink)
+				local tooltipRegions = MidnightLootScanTooltip:GetRegions()
+				for i = 1, select("#", tooltipRegions) do
+					local region = select(i, tooltipRegions)
+					if region and region:GetObjectType() == "FontString" then
+						local text = region:GetText()
+						if text ~= nil then
+							local findTrade = string.find(text, "trade this item")
+							if findTrade then
+								return true
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+--[[function MidnightLoot.TestTradable(itemLink)
+	--NOTE: This is an old version of TestTradeable.  Saving it for now in case the new version the the bad.
 	--Loads an item link into a hidden tooltip, then scans the tooltip to determine if the item is tradable.
 	MidnightLootScanTooltip:ClearLines()
 	MidnightLootScanTooltip:SetHyperlink(itemLink)
@@ -478,11 +564,11 @@ function MidnightLoot.TestTradable(itemLink)
 		end
 	end
 	return isBoundTradable
-end
+end]]--
 
-function MidnightLoot.RollLoot(itemID, owner, kind)
-	RandomRoll(1, 100)
-	SendAddonMessage(MidnightLoot.PREFIX, "INTENT".."~"..itemID.."~"..owner.."~"..kind, "RAID")
+function MidnightLoot.TestTransmog(item)
+	--Checks if the item is transmog eligible for the player.
+	return item.class == "Armor" and (item.subclass == MidnightLoot.classReference[MidnightLoot.playerClass]['armor'] or item.equipSlot == "INVTYPE_CLOAK")
 end
 
 
@@ -558,15 +644,19 @@ function MidnightLoot.NewIntent(player, intent)
 	--If there is, link them and start saving to results.
 	--If not, save the intent for a roll to arrive.
 	local rolls = MidnightLoot.rolls[player]
-	local intent = {
-		['itemID'] = itemID,
-		['owner'] = owner,
-		['kind'] = kind
-	}
-	if getn(rolls) > 0 then
-		MidnightLoot.AddResult(player, table.remove(rolls, 1), intent)
+	if intent.kind == "Claimed" and player == intent.owner then
+		index = MidnightLoot.GetActiveLootIndex(intent.itemID, intent.owner)
+		item = MidnightLoot.activeLootItems[index]
+		item.winner = {["player"] = player, ["kind"] = "Claimed"}
+		SendAddonMessage(MidnightLoot.PREFIX, "WINNER".."~"..item.ID.."~"..item.owner.."~"..item.winner.player.."~"..item.winner.kind, "RAID")
+	elseif intent.kind == "Pass" then
+		MidnightLoot.AddResult(player, nil, intent)
 	else
-		table.insert(MidnightLoot.intentions[player], intent)
+		if getn(rolls) > 0 then
+			MidnightLoot.AddResult(player, table.remove(rolls, 1), intent)
+		else
+			table.insert(MidnightLoot.intentions[player], intent)
+		end
 	end
 end
 
@@ -643,8 +733,10 @@ function MidnightLoot.RollComplete(itemID, owner)
 	SendAddonMessage(MidnightLoot.PREFIX, "WINNER".."~"..itemID.."~"..owner.."~"..item.winner.player.."~"..item.winner.kind, "RAID")
 end
 
---*** function MidnightLoot.ItemWon(item)
+function MidnightLoot.ItemWon(itemID, owner, player, kind)
+end
 
---*** function MidnightLoot.TestTradeRange()
-
---*** function MidnightLoot.TradeLoot()
+function MidnightLoot.TestTradeRange(player)
+	local playerName = Ambiguate(player, "none")
+	return CheckInteractDistance(playerName, 2)
+end

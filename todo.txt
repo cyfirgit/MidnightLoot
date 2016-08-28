@@ -5,6 +5,7 @@ UI & Utility
 	MidnightLoot_OnDragStart(self)
 	MidnightLoot_OnDragStop(self)
 	MidnightLoot_LootIcon_OnEnter(self)
+	MidnightLoot_LootButtonClick(self)
 	MidnightLoot_EventHandler(self, event, ...)
 		"BOSS_KILL"
 		"ENCOUNTER_LOOT_RECEIVED"
@@ -13,19 +14,19 @@ UI & Utility
 		"PLAYER_LOGIN"
 		"CHAT_MSG_ADDON"
 			"NEW_LOOT"
-			"UPDATE_LOOT"
+			"UPDATE_LOOT"* what sends this?  Button presses?
 			"UPDATE_SPECS"
 			"INTENT"
-			"WINNER"
+			!!"WINNER"
 			"TRADED"*
-			"ROLLOFF_START"*
-			"ROLL_WARNING"* this is the warning about extra /roll events.
+			!!"ROLLOFF_START"
+			!!"ROLL_WARNING"* this is the warning about extra /roll events.
 			"ERROR"
 	.LoadPlayerName()
 	.BossKilled(...)
+	.ParseItemLink(link)
 	.UpdateSpecs(messageData)
 	.UpdateActiveLoot()
-	.UpdateLootButtons(self, state1, text1, state2, text2)
 	.RemoveLoot(index)
 	.SetInstanceID()
 	.GetActiveLootIndex()
@@ -39,7 +40,7 @@ Item Detection & Categorization
 	.AddLoot(itemLink, itemID, owner)
 	.UpdateLootItem(itemID, owner, ownerStatus)
 	.TestTradeable(itemLink)
-	.RollLoot(itemID, owner, intent)
+	.TestTransmog(item)
 	.RequestLootStatus* multiple functions?  need to think this one through
 
 Loot Award Decision
@@ -51,13 +52,11 @@ Loot Award Decision
 	.ItemWon(item)*
  
 TODO
-Finish button states for post roll states
-Hook buttons to decision architecture
 Error passing to my client for debugging
-Slash Commands
 Loot log architecture
 Set disenchanter
-Group lootmaster only messages? Do I need more code for non-lootmasters? Maybe just whispers then?
+Build raid roster data?
+Identify Raid lead/ ML LootMaster
 
 Brainstorming
 -Display of button information should be handled for all states via .UpdateActiveLoot().  That includes after awards.
