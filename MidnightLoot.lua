@@ -213,7 +213,8 @@ function MidnightLoot_EventHandler(self, event, ...)
 	elseif event == "PLAYER_LOGIN" then
 		MidnightLoot.LoadPlayerName()
 	elseif event == "CHAT_MSG_ADDON" and ... == MidnightLoot.PREFIX then
-		local _, messageStr, _, sender = ...;
+		local _, messageStr, _, senderRaw = ...;
+		local sender = MidnightLoot.GetFullName(senderRaw)
 		local messageData = {strsplit("~", messageStr)};
 		if messageData[1] == "NEW_LOOT" then
 			local itemLink = messageData[2];
